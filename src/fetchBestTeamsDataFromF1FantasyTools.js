@@ -31,6 +31,7 @@ async function fetchData() {
     const result = await page.evaluate(() => {
       // helper function to grab table rows following a given <h3>
       function scrapeTable(headingText) {
+        // eslint-disable-next-line no-undef
         const h3 = [...document.querySelectorAll('h3')].find(
           (h) => h.textContent.trim() === headingText,
         );
@@ -80,6 +81,7 @@ async function fetchData() {
       }
 
       function scrapeSimulationName() {
+        // eslint-disable-next-line no-undef
         const label = [...document.querySelectorAll('label')].find(
           (l) => l.textContent.trim() === 'Select a simulation preset',
         );
