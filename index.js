@@ -1,6 +1,6 @@
-// index.js: Calls fetchBestTeamsDataFromF1FantasyTools from fetchJson.js
-
-const { fetchBestTeamsDataFromF1FantasyTools } = require('./fetchJson');
+const {
+  fetchBestTeamsDataFromF1FantasyTools,
+} = require('./fetchBestTeamsDataFromF1FantasyTools');
 
 (async () => {
   try {
