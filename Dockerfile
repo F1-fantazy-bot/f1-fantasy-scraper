@@ -7,7 +7,7 @@ WORKDIR /usr/src/app
 
 # Install production dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --production --ignore-scripts
 
 # Copy app source
 COPY index.js .
