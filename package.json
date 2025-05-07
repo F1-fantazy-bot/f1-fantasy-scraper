@@ -7,7 +7,6 @@
     "prepare": "husky",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "docker:push": "docker push <azure-registry>/<image-name>:<tag>",
     "start": "node index.js",
     "format": "prettier --write ."
   },
