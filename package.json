@@ -1,0 +1,15 @@
+{
+  "name": "f1-fantasy-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes F1 Fantasy Tools team calculator for drivers and constructors data using Puppeteer.",
+  "main": "index.js",
+  "scripts": {
+    "docker:push": "docker push <azure-registry>/<image-name>:<tag>",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  }
+}
