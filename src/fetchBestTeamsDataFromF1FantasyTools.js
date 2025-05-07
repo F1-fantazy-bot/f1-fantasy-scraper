@@ -1,16 +1,14 @@
 const puppeteer = require('puppeteer');
 
 exports.fetchBestTeamsDataFromF1FantasyTools = async function () {
-  let data;
   try {
-    data = await fetchData();
+    const data = await fetchData();
+    console.log('Fetched data:', data);
+    return data;
   } catch (error) {
     console.error(`Error fetching data: ${error.message}`);
-
-    return;
+    throw error;
   }
-
-  console.log('Fetched data:', data);
 };
 
 async function fetchData() {
