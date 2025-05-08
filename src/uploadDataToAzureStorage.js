@@ -16,8 +16,8 @@ exports.uploadDataToAzureStorage = async function (data) {
     BlobServiceClient.fromConnectionString(connectionString);
   const containerClient = blobServiceClient.getContainerClient(containerName);
 
-  const timestamp = new Date().toISOString();
-  const blobName = `f1-fantasy-data-${timestamp}.json`;
+  // const timestamp = new Date().toISOString();
+  const blobName = `f1-fantasy-data.json`;
 
   const jsonData = JSON.stringify(data);
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
