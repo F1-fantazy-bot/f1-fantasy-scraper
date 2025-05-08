@@ -1,6 +1,6 @@
 const { BlobServiceClient } = require('@azure/storage-blob');
 
-exports.uploadToAzureStorage = async function (data) {
+exports.uploadDataToAzureStorage = async function (data) {
   if (!data) {
     throw new Error('No data provided for upload');
   }

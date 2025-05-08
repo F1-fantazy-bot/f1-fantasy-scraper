@@ -3,7 +3,7 @@ require('dotenv').config();
 const {
   fetchBestTeamsDataFromF1FantasyTools,
 } = require('./src/fetchBestTeamsDataFromF1FantasyTools');
-const { uploadToAzureStorage } = require('./src/azureStorage');
+const { uploadDataToAzureStorage } = require('./src/uploadDataToAzureStorage');
 
 (async () => {
   try {
@@ -14,7 +14,7 @@ const { uploadToAzureStorage } = require('./src/azureStorage');
       throw new Error('Invalid or missing data structure');
     }
 
-    await uploadToAzureStorage(data);
+    await uploadDataToAzureStorage(data);
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
