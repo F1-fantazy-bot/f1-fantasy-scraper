@@ -15,7 +15,7 @@ class TelegramService {
 
   async sendMessage(message, chatId = LOG_CHANNEL_ID) {
     try {
-      await this.bot.sendMessage(chatId, message);
+      await this.bot.sendMessage(chatId, `SCRAPER: ${message}`);
       console.log('Telegram notification sent successfully');
     } catch (error) {
       console.error('Failed to send Telegram notification:', error.message);
