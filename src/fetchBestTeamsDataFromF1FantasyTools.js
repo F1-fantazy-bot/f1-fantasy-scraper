@@ -71,7 +71,12 @@ async function fetchData() {
             }
           });
           if (pts !== undefined) {
-            out.push({ code, price, delta, pts });
+            out.push({
+              [headingText === 'Drivers' ? 'DR' : 'CN']: code,
+              price,
+              expectedPriceChange: delta,
+              expectedPoints: pts,
+            });
           }
         });
 
