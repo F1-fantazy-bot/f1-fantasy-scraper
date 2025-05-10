@@ -123,7 +123,7 @@ docker run --env-file .env f1-fantasy-scraper
 
 ```json
 {
-  "drivers": [
+  "Drivers": [
     {
       "code": "XXX",
       "price": 0.0,
@@ -131,7 +131,7 @@ docker run --env-file .env f1-fantasy-scraper
       "pts": 0.0
     }
   ],
-  "constructors": [
+  "Constructors": [
     {
       "code": "XXX",
       "price": 0.0,
@@ -139,6 +139,6 @@ docker run --env-file .env f1-fantasy-scraper
       "pts": 0.0
     }
   ],
-  "simulationName": "string"
+  "SimulationName": "string"
 }
 ```

@@ -11,7 +11,7 @@ const telegramService = require('./src/telegramService');
     const data = await fetchBestTeamsDataFromF1FantasyTools();
     console.log('Fetched data:', data);
 
-    if (!data || !data.drivers || !data.constructors) {
+    if (!data || !data.Drivers || !data.Constructors || !data.SimulationName) {
       throw new Error('Invalid or missing data structure');
     }
 

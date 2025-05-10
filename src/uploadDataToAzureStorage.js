@@ -34,11 +34,11 @@ exports.uploadDataToAzureStorage = async function (data) {
       existingData = JSON.parse(existingJsonString);
       console.log(
         'Existing data downloaded successfully. Simulation:',
-        existingData?.simulationName,
+        existingData?.SimulationName,
       );
 
       // Check if we need to upload
-      if (existingData?.simulationName === data.simulationName) {
+      if (existingData?.SimulationName === data.SimulationName) {
         console.log('No simulation change detected, skipping upload');
         return;
       }
@@ -54,8 +54,8 @@ exports.uploadDataToAzureStorage = async function (data) {
     console.log(`Data uploaded successfully to ${blobName}`);
 
     await telegramService.notifySimulationChange(
-      existingData?.simulationName || 'None',
-      data.simulationName,
+      existingData?.SimulationName || 'None',
+      data.SimulationName,
     );
   } catch (error) {
     await telegramService.notifyError(error);

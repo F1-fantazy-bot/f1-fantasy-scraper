@@ -94,9 +94,9 @@ async function fetchData() {
       }
 
       return {
-        drivers: scrapeTable('Drivers'),
-        constructors: scrapeTable('Constructors'),
-        simulationName: scrapeSimulationName(),
+        Drivers: scrapeTable('Drivers'),
+        Constructors: scrapeTable('Constructors'),
+        SimulationName: scrapeSimulationName(),
       };
     });
 
