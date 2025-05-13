@@ -15,7 +15,11 @@ class TelegramService {
 
   async sendMessage(message, chatId = LOG_CHANNEL_ID) {
     try {
-      await this.bot.sendMessage(chatId, `SCRAPER: ${message}`);
+      const formattedMessage =
+        chatId === LOG_CHANNEL_ID ? `SCRAPER: ${message}` : message;
+      await this.bot.sendMessage(chatId, formattedMessage, {
+        parse_mode: 'Markdown',
+      });
       console.log('Telegram notification sent successfully');
     } catch (error) {
       console.error('Failed to send Telegram notification:', error.message);
@@ -24,13 +28,26 @@ class TelegramService {
   }
 
   async notifySimulationChange(oldName, newName) {
-    const message = `🔄 Simulation Changed\nFrom: ${oldName}\nTo: ${newName}`;
-    const targets = [LOG_CHANNEL_ID, KILZI_CHAT_ID, DORSE_CHAT_ID];
-    await Promise.all(targets.map((id) => this.sendMessage(message, id)));
+    const baseMessage = `🔄 *Simulation Changed*
+From: ${oldName}
+To: ${newName}`;
+    const userMessage = `${baseMessage}
+
+💡 Tip: Run /get\\_current\\_simulation to show the current simulation data and name.`;
+
+    // Send to log channel
+    await this.sendMessage(baseMessage, LOG_CHANNEL_ID);
+
+    // Send to users with additional command info
+    const userTargets = [KILZI_CHAT_ID, DORSE_CHAT_ID];
+    await Promise.all(
+      userTargets.map((id) => this.sendMessage(userMessage, id)),
+    );
   }
 
   async notifyError(error) {
-    const message = `❌ Error Occurred\n${error.message}`;
+    const message = `❌ Error Occurred
+${error.message}`;
     await this.sendMessage(message);
   }
 }
