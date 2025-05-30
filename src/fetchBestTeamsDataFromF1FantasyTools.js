@@ -13,11 +13,27 @@ exports.fetchBestTeamsDataFromF1FantasyTools = async function () {
 
 async function fetchData() {
   const url = 'https://f1fantasytools.com/team-calculator';
-  const browser = await puppeteer.launch({ headless: 'new' });
-  const page = await browser.newPage();
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: [
+      '--enable-features=NetworkService,NetworkServiceInProcess',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+    ],
+  });
 
   try {
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    const page = await browser.newPage();
+
+    // Disable images and CSS to reduce memory usage
+    await page.setRequestInterception(true);
+    page.on('request', (r) => {
+      if (['image', 'font', 'stylesheet'].includes(r.resourceType())) r.abort();
+      else r.continue();
+    });
+
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
     // ── wait for heading text “Drivers” to show up ──
     await page.waitForSelector('h3', {
@@ -105,6 +121,7 @@ async function fetchData() {
       };
     });
 
+    await page.close();
     await browser.close();
     console.log(JSON.stringify(result, null, 2));
 
