@@ -16,15 +16,35 @@ async function fetchData() {
   const browser = await puppeteer.launch({
     headless: 'new',
     args: [
+      // Network optimization - runs network service in the main process
       '--enable-features=NetworkService,NetworkServiceInProcess',
+
+      // Security - disables Chrome's sandboxing (required in containers)
       '--no-sandbox',
+
+      // Security - disables setuid sandbox (required for non-root containers)
       '--disable-setuid-sandbox',
+
+      // Memory - uses /tmp instead of /dev/shm for shared memory (prevents OOM in containers)
       '--disable-dev-shm-usage',
+
+      // Performance - prevents Chrome from throttling due to memory pressure
+      '--memory-pressure-off',
+
+      // Performance - prevents background tabs from being throttled (keeps navigation active)
+      '--disable-background-timer-throttling',
+
+      // Performance - keeps renderer process active (prevents backgrounding delays)
+      '--disable-renderer-backgrounding',
+
+      // Memory limit - restricts Node.js V8 heap to 512MB (prevents memory growth over time)
+      '--max_old_space_size=512',
     ],
   });
+  let page;
 
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
 
     // Disable images and CSS to reduce memory usage
     await page.setRequestInterception(true);
@@ -32,6 +52,12 @@ async function fetchData() {
       if (['image', 'font', 'stylesheet'].includes(r.resourceType())) r.abort();
       else r.continue();
     });
+
+    // Set viewport to reduce memory usage
+    await page.setViewport({ width: 1024, height: 768 });
+
+    // Set user agent to avoid bot detection
+    await page.setUserAgent('Mozilla/5.0 (Linux; x86_64) AppleWebKit/537.36');
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
@@ -127,6 +153,9 @@ async function fetchData() {
 
     return result;
   } catch (error) {
+    if (page) {
+      await page.close();
+    }
     await browser.close();
     throw new Error(`Failed to fetch data: ${error.message}`);
   }
