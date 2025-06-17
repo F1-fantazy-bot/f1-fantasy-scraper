@@ -8,9 +8,13 @@ A Node.js application that scrapes F1 Fantasy Tools team calculator data and sto
 - Extracts driver and constructor data including:
   - Code/Name
   - Price
-  - Delta
-  - Points
+  - Expected Price Change (Delta)
+  - Expected Points
+- Captures simulation metadata:
+  - Simulation name
+  - Last update timestamp (converted to UTC)
 - Stores timestamped data in Azure Blob Storage
+- Change detection based on simulation name and last update timestamp
 - Docker support for containerized deployment
 
 ## System Flow
@@ -24,43 +28,48 @@ graph TB
         B -->|Scrapes| C[Driver Data]
         B -->|Scrapes| D[Constructor Data]
         B -->|Extracts| E[Simulation Name]
+        B -->|Extracts| F[Last Update Time]
     end
 
     subgraph Data Processing
-        C --> F[Data Object]
-        D --> F
-        E --> F
+        C --> G[Data Object]
+        D --> G
+        E --> G
+        F --> G
     end
 
     subgraph Azure Storage
-        F -->|Check Existing Data| G[Azure Blob Storage]
-        G -->|Compare Simulation Names| H{Simulation Changed?}
-        H -->|Yes| I[Upload New Data]
-        H -->|No| J[Skip Upload]
+        G -->|Check Existing Data| H[Azure Blob Storage]
+        H -->|Compare Simulation Names and last update timestamp| I{Simulation Changed?}
+        I -->|Yes| J[Upload New Data]
+        I -->|No| K[Skip Upload]
     end
 
     subgraph Notifications
-        I --> K[Telegram Service]
-        K -->|Send Updates| L[Log Channel]
-        K -->|Send Updates| M[Individual Users]
-        K -->|Error Notifications| N[Error Reporting]
+        J --> L[Telegram Service]
+        L -->|Send Updates| M[Log Channel]
+        L -->|Send Updates| N[Individual Users]
+        L -->|Error Notifications| O[Error Reporting]
     end
 ```
 
 ### Flow Description
 
-1. **Web Scraping**: The application uses Puppeteer to scrape data from F1 Fantasy Tools website, collecting information about drivers, constructors, and the current simulation name.
+1. **Web Scraping**: The application uses Puppeteer to scrape data from F1 Fantasy Tools website, collecting information about drivers, constructors, simulation name, and last update timestamp.
 
-2. **Data Processing**: All scraped data is combined into a structured data object that includes driver statistics, constructor information, and simulation details.
+2. **Data Processing**: All scraped data is combined into a structured data object that includes driver statistics, constructor information, simulation details, and timestamp data converted to UTC format.
 
 3. **Azure Storage**:
 
    - The system checks for existing data in Azure Blob Storage
-   - Compares the current simulation name with the stored one
-   - Only uploads new data if the simulation has changed
+   - Compares both simulation name AND last update timestamp
+   - Only uploads new data if either the simulation has changed OR the timestamp has updated
+   - Enhanced change detection prevents unnecessary uploads while capturing all meaningful updates
 
 4. **Notifications**: Through the Telegram service, the system:
-   - Notifies about simulation changes
+   - Notifies about simulation name changes
+   - Notifies about timestamp-only updates (when simulation data refreshes)
+   - Provides detailed change information in notifications
    - Sends updates to both a logging channel and individual users
    - Reports any errors that occur during the process
 
@@ -125,20 +134,34 @@ docker run --env-file .env f1-fantasy-scraper
 {
   "Drivers": [
     {
-      "code": "XXX",
-      "price": 0.0,
-      "delta": 0.0,
-      "pts": 0.0
+      "DR": "NOR",
+      "price": 31.1,
+      "expectedPriceChange": 0.14,
+      "expectedPoints": 30.5
     }
   ],
   "Constructors": [
     {
-      "code": "XXX",
-      "price": 0.0,
-      "delta": 0.0,
-      "pts": 0.0
+      "CN": "MCL",
+      "price": 32.7,
+      "expectedPriceChange": 0.3,
+      "expectedPoints": 72.9
     }
   ],
-  "SimulationName": "string"
+  "SimulationName": "Canada. Post-FP2.",
+  "SimulationLastUpdate": "2025-06-14T09:24:00.000Z"
 }
 ```
+
+### Field Descriptions
+
+- **Drivers/Constructors**:
+
+  - `DR`/`CN`: Driver/Constructor code (e.g., "NOR", "MCL")
+  - `price`: Current price in millions
+  - `expectedPriceChange`: Expected price change (delta)
+  - `expectedPoints`: Expected points for the race
+
+- **Simulation Metadata**:
+  - `SimulationName`: Name of the current simulation
+  - `SimulationLastUpdate`: UTC timestamp of when the simulation was last updated (ISO 8601 format)

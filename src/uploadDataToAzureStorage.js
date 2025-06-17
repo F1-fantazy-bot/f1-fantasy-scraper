@@ -35,11 +35,18 @@ exports.uploadDataToAzureStorage = async function (data) {
       console.log(
         'Existing data downloaded successfully. Simulation:',
         existingData?.SimulationName,
+        ', Last Update:',
+        existingData?.SimulationLastUpdate,
       );
 
-      // Check if we need to upload
-      if (existingData?.SimulationName === data.SimulationName) {
-        console.log('No simulation change detected, skipping upload');
+      // Check if we need to upload (both simulation name AND last update time)
+      if (
+        existingData?.SimulationName === data.SimulationName &&
+        existingData?.SimulationLastUpdate === data.SimulationLastUpdate
+      ) {
+        console.log(
+          'No simulation or timestamp change detected, skipping upload',
+        );
         return;
       }
     } catch (error) {
@@ -53,10 +60,7 @@ exports.uploadDataToAzureStorage = async function (data) {
     await blockBlobClient.upload(jsonData, jsonData.length);
     console.log(`Data uploaded successfully to ${blobName}`);
 
-    await telegramService.notifySimulationChange(
-      existingData?.SimulationName || 'None',
-      data.SimulationName,
-    );
+    await telegramService.notifySimulationChange(existingData, data);
   } catch (error) {
     await telegramService.notifyError(error);
     throw new Error(`Failed to upload data to Azure: ${error.message}`);
