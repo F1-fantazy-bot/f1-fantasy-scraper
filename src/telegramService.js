@@ -27,10 +27,52 @@ class TelegramService {
     }
   }
 
-  async notifySimulationChange(oldName, newName) {
-    const baseMessage = `🔄 *Simulation Changed*
-From: ${oldName}
-To: ${newName}`;
+  formatTimestamp(utcTimestamp) {
+    if (!utcTimestamp) {
+      return 'Unknown';
+    }
+
+    try {
+      const date = new Date(utcTimestamp);
+      // Format to Israel timezone (Asia/Jerusalem)
+      return date.toLocaleString('en-GB', {
+        timeZone: 'Asia/Jerusalem',
+        timeZoneName: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.warn('Failed to format timestamp:', error);
+      return utcTimestamp;
+    }
+  }
+
+  async notifySimulationChange(oldData, newData) {
+    const nameChanged = oldData?.SimulationName !== newData.SimulationName;
+    const timeChanged =
+      oldData?.SimulationLastUpdate !== newData.SimulationLastUpdate;
+
+    let baseMessage = '';
+
+    if (nameChanged && timeChanged) {
+      baseMessage = `🔄 *Simulation Changed*
+From: ${oldData?.SimulationName || 'None'}
+To: ${newData.SimulationName}
+⏰ Updated: ${this.formatTimestamp(newData.SimulationLastUpdate)}`;
+    } else if (nameChanged) {
+      baseMessage = `🔄 *Simulation Changed*
+From: ${oldData?.SimulationName || 'None'}
+To: ${newData.SimulationName}`;
+    } else if (timeChanged) {
+      baseMessage = `⏰ *Simulation Updated*
+Name: ${newData.SimulationName}
+From: ${this.formatTimestamp(oldData?.SimulationLastUpdate)}
+To: ${this.formatTimestamp(newData.SimulationLastUpdate)}`;
+    }
+
     const userMessage = `${baseMessage}
 
 💡 Tip: Run /get\\_current\\_simulation to show the current simulation data and name.`;

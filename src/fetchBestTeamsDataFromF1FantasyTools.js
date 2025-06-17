@@ -140,11 +140,71 @@ async function fetchData() {
         );
       }
 
-      return {
+      function scrapeSimulationLastUpdate() {
+        // eslint-disable-next-line no-undef
+        const label = [...document.querySelectorAll('label')].find(
+          (l) => l.textContent.trim() === 'Select a simulation preset',
+        );
+
+        if (!label) {
+          return null;
+        }
+
+        // Search in the third level parent container (where the timestamp is located)
+        const container = label.parentElement?.parentElement?.parentElement;
+        if (!container) {
+          return null;
+        }
+
+        const timestampPattern = /Last updated on .+ at .+ [A-Z]{2,4}$/;
+        const timestampElement = [...container.querySelectorAll('*')].find(
+          (el) => timestampPattern.test(el.textContent.trim()),
+        );
+
+        if (!timestampElement) {
+          return null;
+        }
+
+        const timestampText = timestampElement.textContent.trim();
+
+        try {
+          // Parse: "Last updated on Jun 14 at 3:24 PM IDT"
+          const match = timestampText.match(
+            /Last updated on (.+) at (.+) ([A-Z]{2,4})$/,
+          );
+          if (!match) {
+            return null;
+          }
+
+          const [, dateStr, timeStr] = match;
+          const currentYear = new Date().getFullYear();
+
+          const parsedDate = new Date(`${dateStr} ${currentYear} ${timeStr}`);
+
+          if (isNaN(parsedDate.getTime())) {
+            return null;
+          }
+
+          return new parsedDate.toISOString();
+        } catch (error) {
+          console.warn('Failed to parse timestamp:', timestampText, error);
+          return null;
+        }
+      }
+
+      const simulationLastUpdate = scrapeSimulationLastUpdate();
+
+      const result = {
         Drivers: scrapeTable('Drivers'),
         Constructors: scrapeTable('Constructors'),
         SimulationName: scrapeSimulationName(),
       };
+
+      if (simulationLastUpdate) {
+        result.SimulationLastUpdate = simulationLastUpdate;
+      }
+
+      return result;
     });
 
     await page.close();
