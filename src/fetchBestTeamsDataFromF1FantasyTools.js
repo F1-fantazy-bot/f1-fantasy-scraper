@@ -185,7 +185,7 @@ async function fetchData() {
             return null;
           }
 
-          return new parsedDate.toISOString();
+          return parsedDate.toISOString();
         } catch (error) {
           console.warn('Failed to parse timestamp:', timestampText, error);
           return null;
