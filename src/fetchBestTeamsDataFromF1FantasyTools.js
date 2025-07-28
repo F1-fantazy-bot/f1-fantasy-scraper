@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const telegramService = require('./telegramService');
 
 exports.fetchBestTeamsDataFromF1FantasyTools = async function () {
   try {
@@ -214,6 +215,18 @@ async function fetchData() {
     return result;
   } catch (error) {
     if (page) {
+      try {
+        const screenshot = await page.screenshot();
+        await telegramService.sendPhoto(
+          screenshot,
+          `Failure screenshot: ${error.message}`,
+        );
+        const html = await page.content();
+        console.error('Page HTML snippet:', html.slice(0, 500));
+      } catch (captureError) {
+        console.error('Failed to capture debug info:', captureError.message);
+      }
+
       await page.close();
     }
     await browser.close();
