@@ -27,15 +27,6 @@ class TelegramService {
     }
   }
 
-  async sendPhoto(photoBuffer, caption, chatId = LOG_CHANNEL_ID) {
-    try {
-      await this.bot.sendPhoto(chatId, photoBuffer, { caption });
-      console.log('Telegram photo sent successfully');
-    } catch (error) {
-      console.error('Failed to send Telegram photo:', error.message);
-    }
-  }
-
   formatTimestamp(utcTimestamp) {
     if (!utcTimestamp) {
       return 'Unknown';
