@@ -216,20 +216,15 @@ async function fetchData() {
   } catch (error) {
     if (page) {
       try {
-        const html = await page.content();
-        console.error('Page HTML snippet:', html.slice(0, 500));
-      } catch (htmlError) {
-        console.error('Failed to capture page HTML:', htmlError.message);
-      }
-
-      try {
         const screenshot = await page.screenshot();
         await telegramService.sendPhoto(
           screenshot,
           `Failure screenshot: ${error.message}`,
         );
+        const html = await page.content();
+        console.error('Page HTML snippet:', html.slice(0, 500));
       } catch (captureError) {
-        console.error('Failed to send screenshot:', captureError.message);
+        console.error('Failed to capture debug info:', captureError.message);
       }
 
       await page.close();
