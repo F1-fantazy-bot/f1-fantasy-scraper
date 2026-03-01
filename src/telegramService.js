@@ -1,8 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
+const { listAllUserChatIds } = require('./userRegistryService');
 
 const LOG_CHANNEL_ID = '-1002298860617';
-const KILZI_CHAT_ID = '454873194';
-const DORSE_CHAT_ID = '673447790';
 
 class TelegramService {
   constructor() {
@@ -80,11 +79,26 @@ To: ${this.formatTimestamp(newData.SimulationLastUpdate)}`;
     // Send to log channel
     await this.sendMessage(baseMessage, LOG_CHANNEL_ID);
 
-    // Send to users with additional command info
-    const userTargets = [KILZI_CHAT_ID, DORSE_CHAT_ID];
-    await Promise.all(
-      userTargets.map((id) => this.sendMessage(userMessage, id)),
-    );
+    // Send to all registered users from Azure Table Storage
+    try {
+      const userChatIds = await listAllUserChatIds();
+      const results = await Promise.allSettled(
+        userChatIds.map((id) => this.sendMessage(userMessage, id)),
+      );
+
+      const failures = results.filter((r) => r.status === 'rejected');
+      if (failures.length > 0) {
+        console.error(
+          `Failed to send notification to ${failures.length} user(s):`,
+          failures.map((f) => f.reason?.message || f.reason),
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Failed to fetch registered users, skipping user notifications:',
+        error.message,
+      );
+    }
   }
 
   async notifyError(error) {
