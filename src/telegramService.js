@@ -2,6 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const { listAllUserChatIds } = require('./userRegistryService');
 
 const LOG_CHANNEL_ID = '-1002298860617';
+const ERRORS_CHANNEL_ID = '-5167373779';
 
 class TelegramService {
   constructor() {
@@ -14,8 +15,11 @@ class TelegramService {
 
   async sendMessage(message, chatId = LOG_CHANNEL_ID) {
     try {
-      const formattedMessage =
-        chatId === LOG_CHANNEL_ID ? `SCRAPER: ${message}` : message;
+      const isChannelMessage =
+        chatId === LOG_CHANNEL_ID || chatId === ERRORS_CHANNEL_ID;
+      const formattedMessage = isChannelMessage
+        ? `SCRAPER: ${message}`
+        : message;
       await this.bot.sendMessage(chatId, formattedMessage, {
         parse_mode: 'Markdown',
       });
@@ -104,7 +108,10 @@ To: ${this.formatTimestamp(newData.SimulationLastUpdate)}`;
   async notifyError(error) {
     const message = `❌ Error Occurred
 ${error.message}`;
-    await this.sendMessage(message);
+    // Send to log channel
+    await this.sendMessage(message, LOG_CHANNEL_ID);
+    // Also send to errors channel
+    await this.sendMessage(message, ERRORS_CHANNEL_ID);
   }
 }
 
