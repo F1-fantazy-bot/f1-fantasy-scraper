@@ -2,10 +2,10 @@
 
 ARM templates for the two Logic Apps that drive the scraper in production:
 
-| Logic App                      | Trigger                                      | Purpose                                                                                          |
-| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `f1-fantasy-scraper-runner`    | HTTP (Request)                               | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API. |
-| `f1-fantasy-scraper-scheduler` | Recurrence (Fri/Sat, every 15 & 45 min, UTC) | Fetches the next race schedule; if `FP1 < now < Qualifying`, calls the runner.                   |
+| Logic App                      | Trigger                                              | Purpose                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `f1-fantasy-scraper-runner`    | HTTP (Request)                                       | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API.                                        |
+| `f1-fantasy-scraper-scheduler` | Recurrence (Fri/Sat 15 & 45 min + Mon 02/10/18, UTC) | On Fri/Sat: fetches next race and calls runner if `FP1 < now < Qualifying`. On Mon 02:00/10:00/18:00 UTC: calls runner unconditionally. |
 
 ## Layout
 
@@ -47,6 +47,10 @@ npm run infra:deploy:scheduler
 # End-to-end verify: POST the runner's HTTP trigger to start the ACI
 npm run infra:trigger-runner
 
+# Rotate the runner's SAS key, push the new URL to Key Vault, redeploy
+# scheduler. Defaults: vault=f1-fantasy-kv, secret=f1-fantasy-scraper-runner-url.
+npm run infra:rotate-sas
+
 # Inspect
 npm run infra:status
 npm run infra:logs:runner
@@ -79,5 +83,6 @@ az deployment group create \
 
 - **Runner uses System-Assigned Managed Identity** (no Azure API Connection needed). The MSI must hold a role granting `Microsoft.ContainerInstance/containerGroups/start/action` on the ACI — Contributor at the ACI scope is the simplest fit.
 - **Scheduler → Runner auth is SAS**: the scheduler template calls `listCallbackUrl()` at deploy time, so the SAS-signed URL is always fresh and never hardcoded in source.
+- **Two triggers, one Logic App:** the scheduler has a weekend `Recurrence` (Fri/Sat 15 & 45 past every hour) and a separate `Recurrence_Monday` (Mon 02/10/18). A top-level `If_Monday_Trigger` action branches on `workflow()?['run']?['trigger']?['name']`: Monday runs call the runner directly; weekend runs execute the FP1→Qualifying window check.
 - **Idempotent:** Re-running the deployment updates the workflow definitions in place.
 - **Replacing existing portal-created Logic Apps:** The first deploy will overwrite the current definitions. Behavior is equivalent but action names differ (e.g., `Start_ACI` replaces the previous `aci-1` connector action).
