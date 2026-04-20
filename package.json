@@ -20,6 +20,7 @@
     "infra:grant-runner-msi": "bash scripts/grant-runner-msi.sh",
     "infra:deploy": "npm run infra:deploy:runner && npm run infra:grant-runner-msi && npm run infra:deploy:scheduler",
     "infra:trigger-runner": "bash scripts/trigger-runner.sh",
+    "infra:rotate-sas": "bash scripts/rotate-runner-sas.sh",
     "infra:logs:runner": "az monitor activity-log list --resource-group \"${RESOURCE_GROUP:-f1-fantazy-bot}\" --namespace Microsoft.Logic --max-events 20 -o table",
     "infra:status": "az resource list --resource-group \"${RESOURCE_GROUP:-f1-fantazy-bot}\" --resource-type Microsoft.Logic/workflows -o table"
   },

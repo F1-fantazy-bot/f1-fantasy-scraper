@@ -2,9 +2,9 @@
 
 ARM templates for the two Logic Apps that drive the scraper in production:
 
-| Logic App                      | Trigger                                      | Purpose                                                                                          |
-| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `f1-fantasy-scraper-runner`    | HTTP (Request)                               | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API. |
+| Logic App                      | Trigger                                              | Purpose                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `f1-fantasy-scraper-runner`    | HTTP (Request)                                       | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API.                                        |
 | `f1-fantasy-scraper-scheduler` | Recurrence (Fri/Sat 15 & 45 min + Mon 02/10/18, UTC) | On Fri/Sat: fetches next race and calls runner if `FP1 < now < Qualifying`. On Mon 02:00/10:00/18:00 UTC: calls runner unconditionally. |
 
 ## Layout
@@ -23,6 +23,41 @@ infra/
 
 Deploy **runner first** — the scheduler template resolves the runner's callback URL at deploy time via `listCallbackUrl()`.
 
+Make sure you're logged in first: `az login` and `az account set --subscription <id>`.
+
+### Via npm scripts (recommended for manual verification)
+
+All scripts default to resource group `f1-fantazy-bot`. Override via `RESOURCE_GROUP=<name>` if needed.
+
+```bash
+# Validate templates without deploying
+npm run infra:validate
+
+# Preview changes (what-if)
+npm run infra:whatif
+
+# Full flow: runner → grant MSI → scheduler
+npm run infra:deploy
+
+# Or individual steps
+npm run infra:deploy:runner
+npm run infra:grant-runner-msi
+npm run infra:deploy:scheduler
+
+# End-to-end verify: POST the runner's HTTP trigger to start the ACI
+npm run infra:trigger-runner
+
+# Rotate the runner's SAS key, push the new URL to Key Vault, redeploy
+# scheduler. Defaults: vault=f1-fantasy-kv, secret=f1-fantasy-scraper-runner-url.
+npm run infra:rotate-sas
+
+# Inspect
+npm run infra:status
+npm run infra:logs:runner
+```
+
+### Raw az CLI (equivalent)
+
 ```bash
 # 1. Runner
 az deployment group create \
@@ -31,15 +66,7 @@ az deployment group create \
   --parameters @infra/runner/azuredeploy.parameters.json
 
 # 2. Grant the runner's system-assigned MSI permission to start the ACI
-PRINCIPAL_ID=$(az deployment group show \
-  --resource-group f1-fantazy-bot \
-  --name azuredeploy \
-  --query properties.outputs.logicAppPrincipalId.value -o tsv)
-
-az role assignment create \
-  --assignee "$PRINCIPAL_ID" \
-  --role Contributor \
-  --scope /subscriptions/5cfc4033-d828-4bdb-b9ea-de042e483715/resourceGroups/f1-fantazy-bot/providers/Microsoft.ContainerInstance/containerGroups/f1-fantasy-scraper-aci
+bash scripts/grant-runner-msi.sh
 
 # 3. Scheduler
 az deployment group create \
