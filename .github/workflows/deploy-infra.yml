@@ -5,6 +5,9 @@ on:
     branches: ['main']
     paths:
       - 'infra/**'
+      - 'scripts/grant-runner-msi.sh'
+      - 'scripts/trigger-runner.sh'
+      - 'package.json'
       - '.github/workflows/deploy-infra.yml'
   workflow_dispatch:
 
@@ -12,13 +15,13 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  RESOURCE_GROUP: f1-fantazy-bot
-  ACI_NAME: f1-fantasy-scraper-aci
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      RESOURCE_GROUP: f1-fantazy-bot
+      ACI_NAME: f1-fantasy-scraper-aci
+      DEPLOYMENT_SUFFIX: ${{ github.run_id }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,46 +33,5 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Deploy runner Logic App
-        id: runner
-        run: |
-          set -euo pipefail
-          outputs=$(az deployment group create \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "scraper-runner-$GITHUB_RUN_ID" \
-            --template-file infra/runner/azuredeploy.json \
-            --parameters @infra/runner/azuredeploy.parameters.json \
-            --query properties.outputs -o json)
-          principal_id=$(echo "$outputs" | jq -r '.logicAppPrincipalId.value')
-          echo "principal_id=$principal_id" >> "$GITHUB_OUTPUT"
-
-      - name: Grant runner MSI Contributor on ACI (idempotent)
-        env:
-          PRINCIPAL_ID: ${{ steps.runner.outputs.principal_id }}
-          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          set -euo pipefail
-          scope="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.ContainerInstance/containerGroups/$ACI_NAME"
-          existing=$(az role assignment list \
-            --assignee "$PRINCIPAL_ID" \
-            --role Contributor \
-            --scope "$scope" \
-            --query "length(@)" -o tsv)
-          if [ "$existing" -gt 0 ]; then
-            echo "Role assignment already exists — skipping."
-          else
-            az role assignment create \
-              --assignee-object-id "$PRINCIPAL_ID" \
-              --assignee-principal-type ServicePrincipal \
-              --role Contributor \
-              --scope "$scope"
-          fi
-
-      - name: Deploy scheduler Logic App
-        run: |
-          set -euo pipefail
-          az deployment group create \
-            --resource-group "$RESOURCE_GROUP" \
-            --name "scraper-scheduler-$GITHUB_RUN_ID" \
-            --template-file infra/scheduler/azuredeploy.json \
-            --parameters @infra/scheduler/azuredeploy.parameters.json
+      - name: Deploy Logic Apps (runner -> grant MSI -> scheduler)
+        run: npm run infra:deploy
