@@ -87,9 +87,7 @@
                 }
               },
               "runAfter": {
-                "Start_ACI": [
-                  "Succeeded"
-                ]
+                "Start_ACI": ["Succeeded"]
               }
             }
           }

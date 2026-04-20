@@ -50,40 +50,12 @@
                 "interval": 1,
                 "timeZone": "UTC",
                 "schedule": {
-                  "weekDays": [
-                    "Friday",
-                    "Saturday"
-                  ],
+                  "weekDays": ["Friday", "Saturday"],
                   "hours": [
-                    0,
-                    1,
-                    2,
-                    3,
-                    4,
-                    5,
-                    6,
-                    7,
-                    8,
-                    9,
-                    10,
-                    11,
-                    12,
-                    13,
-                    14,
-                    15,
-                    16,
-                    17,
-                    18,
-                    19,
-                    20,
-                    21,
-                    22,
-                    23
+                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                    17, 18, 19, 20, 21, 22, 23
                   ],
-                  "minutes": [
-                    15,
-                    45
-                  ]
+                  "minutes": [15, 45]
                 }
               }
             }
@@ -145,27 +117,21 @@
                 }
               },
               "runAfter": {
-                "Fetch_Next_Race": [
-                  "Succeeded"
-                ]
+                "Fetch_Next_Race": ["Succeeded"]
               }
             },
             "Compose_FirstPractice_DateTime": {
               "type": "Compose",
               "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['time']\n)",
               "runAfter": {
-                "Parse_JSON": [
-                  "Succeeded"
-                ]
+                "Parse_JSON": ["Succeeded"]
               }
             },
             "Compose_Qualifying_DateTime": {
               "type": "Compose",
               "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['time']\n)",
               "runAfter": {
-                "Compose_FirstPractice_DateTime": [
-                  "Succeeded"
-                ]
+                "Compose_FirstPractice_DateTime": ["Succeeded"]
               }
             },
             "If_Within_FP1_to_Qualifying_Window": {
@@ -205,9 +171,7 @@
                 "actions": {}
               },
               "runAfter": {
-                "Compose_Qualifying_DateTime": [
-                  "Succeeded"
-                ]
+                "Compose_Qualifying_DateTime": ["Succeeded"]
               }
             }
           },

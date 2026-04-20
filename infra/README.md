@@ -2,10 +2,10 @@
 
 ARM templates for the two Logic Apps that drive the scraper in production:
 
-| Logic App                      | Trigger                                        | Purpose                                                                                          |
-| ------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `f1-fantasy-scraper-runner`    | HTTP (Request)                                 | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API. |
-| `f1-fantasy-scraper-scheduler` | Recurrence (Fri/Sat, every 15 & 45 min, UTC)   | Fetches the next race schedule; if `FP1 < now < Qualifying`, calls the runner.                   |
+| Logic App                      | Trigger                                      | Purpose                                                                                          |
+| ------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `f1-fantasy-scraper-runner`    | HTTP (Request)                               | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API. |
+| `f1-fantasy-scraper-scheduler` | Recurrence (Fri/Sat, every 15 & 45 min, UTC) | Fetches the next race schedule; if `FP1 < now < Qualifying`, calls the runner.                   |
 
 ## Layout
 
