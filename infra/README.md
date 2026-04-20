@@ -23,6 +23,37 @@ infra/
 
 Deploy **runner first** — the scheduler template resolves the runner's callback URL at deploy time via `listCallbackUrl()`.
 
+Make sure you're logged in first: `az login` and `az account set --subscription <id>`.
+
+### Via npm scripts (recommended for manual verification)
+
+All scripts default to resource group `f1-fantazy-bot`. Override via `RESOURCE_GROUP=<name>` if needed.
+
+```bash
+# Validate templates without deploying
+npm run infra:validate
+
+# Preview changes (what-if)
+npm run infra:whatif
+
+# Full flow: runner → grant MSI → scheduler
+npm run infra:deploy
+
+# Or individual steps
+npm run infra:deploy:runner
+npm run infra:grant-runner-msi
+npm run infra:deploy:scheduler
+
+# End-to-end verify: POST the runner's HTTP trigger to start the ACI
+npm run infra:trigger-runner
+
+# Inspect
+npm run infra:status
+npm run infra:logs:runner
+```
+
+### Raw az CLI (equivalent)
+
 ```bash
 # 1. Runner
 az deployment group create \
@@ -31,15 +62,7 @@ az deployment group create \
   --parameters @infra/runner/azuredeploy.parameters.json
 
 # 2. Grant the runner's system-assigned MSI permission to start the ACI
-PRINCIPAL_ID=$(az deployment group show \
-  --resource-group f1-fantazy-bot \
-  --name azuredeploy \
-  --query properties.outputs.logicAppPrincipalId.value -o tsv)
-
-az role assignment create \
-  --assignee "$PRINCIPAL_ID" \
-  --role Contributor \
-  --scope /subscriptions/5cfc4033-d828-4bdb-b9ea-de042e483715/resourceGroups/f1-fantazy-bot/providers/Microsoft.ContainerInstance/containerGroups/f1-fantasy-scraper-aci
+bash scripts/grant-runner-msi.sh
 
 # 3. Scheduler
 az deployment group create \
