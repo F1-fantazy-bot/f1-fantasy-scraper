@@ -6,14 +6,21 @@
       "type": "string",
       "defaultValue": "f1-fantasy-scraper-scheduler",
       "metadata": {
-        "description": "Name of the scheduler Logic App resource."
+        "description": "Name of the weekend scheduler Logic App resource."
+      }
+    },
+    "postRaceLogicAppName": {
+      "type": "string",
+      "defaultValue": "f1-fantasy-scraper-scheduler-post-race",
+      "metadata": {
+        "description": "Name of the post-race scheduler Logic App resource."
       }
     },
     "location": {
       "type": "string",
       "defaultValue": "[resourceGroup().location]",
       "metadata": {
-        "description": "Azure region for the Logic App."
+        "description": "Azure region for the Logic Apps."
       }
     },
     "runnerLogicAppName": {
@@ -59,8 +66,139 @@
                   "minutes": [15, 45]
                 }
               }
+            }
+          },
+          "actions": {
+            "Fetch_Next_Race": {
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "[parameters('nextRaceApiUrl')]"
+              },
+              "runtimeConfiguration": {
+                "contentTransfer": {
+                  "transferMode": "Chunked"
+                }
+              },
+              "runAfter": {}
             },
-            "Recurrence_Monday": {
+            "Parse_JSON": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@body('Fetch_Next_Race')",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "MRData": {
+                      "type": "object",
+                      "properties": {
+                        "RaceTable": {
+                          "type": "object",
+                          "properties": {
+                            "Races": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "FirstPractice": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": { "type": "string" },
+                                      "time": { "type": "string" }
+                                    }
+                                  },
+                                  "Qualifying": {
+                                    "type": "object",
+                                    "properties": {
+                                      "date": { "type": "string" },
+                                      "time": { "type": "string" }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "Fetch_Next_Race": ["Succeeded"]
+              }
+            },
+            "Compose_FirstPractice_DateTime": {
+              "type": "Compose",
+              "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['time']\n)",
+              "runAfter": {
+                "Parse_JSON": ["Succeeded"]
+              }
+            },
+            "Compose_Qualifying_DateTime": {
+              "type": "Compose",
+              "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['time']\n)",
+              "runAfter": {
+                "Compose_FirstPractice_DateTime": ["Succeeded"]
+              }
+            },
+            "If_Within_FP1_to_Qualifying_Window": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "greater": [
+                      "@utcNow()",
+                      "@outputs('Compose_FirstPractice_DateTime')"
+                    ]
+                  },
+                  {
+                    "less": [
+                      "@utcNow()",
+                      "@outputs('Compose_Qualifying_DateTime')"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Trigger_Runner": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "POST",
+                    "uri": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', parameters('runnerLogicAppName'), 'manual'), '2016-06-01').value]"
+                  },
+                  "runtimeConfiguration": {
+                    "contentTransfer": {
+                      "transferMode": "Chunked"
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {
+                "Compose_Qualifying_DateTime": ["Succeeded"]
+              }
+            }
+          },
+          "outputs": {}
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2019-05-01",
+      "name": "[parameters('postRaceLogicAppName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "state": "Enabled",
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "contentVersion": "1.0.0.0",
+          "triggers": {
+            "Recurrence": {
               "type": "Recurrence",
               "recurrence": {
                 "frequency": "Week",
@@ -75,144 +213,15 @@
             }
           },
           "actions": {
-            "If_Monday_Trigger": {
-              "type": "If",
-              "expression": {
-                "equals": [
-                  "@workflow()?['run']?['trigger']?['name']",
-                  "Recurrence_Monday"
-                ]
+            "Trigger_Runner_Post_Race": {
+              "type": "Http",
+              "inputs": {
+                "method": "POST",
+                "uri": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', parameters('runnerLogicAppName'), 'manual'), '2016-06-01').value]"
               },
-              "actions": {
-                "Trigger_Runner_Monday": {
-                  "type": "Http",
-                  "inputs": {
-                    "method": "GET",
-                    "uri": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', parameters('runnerLogicAppName'), 'manual'), '2016-06-01').value]"
-                  },
-                  "runtimeConfiguration": {
-                    "contentTransfer": {
-                      "transferMode": "Chunked"
-                    }
-                  },
-                  "runAfter": {}
-                }
-              },
-              "else": {
-                "actions": {
-                  "Fetch_Next_Race": {
-                    "type": "Http",
-                    "inputs": {
-                      "method": "GET",
-                      "uri": "[parameters('nextRaceApiUrl')]"
-                    },
-                    "runtimeConfiguration": {
-                      "contentTransfer": {
-                        "transferMode": "Chunked"
-                      }
-                    },
-                    "runAfter": {}
-                  },
-                  "Parse_JSON": {
-                    "type": "ParseJson",
-                    "inputs": {
-                      "content": "@body('Fetch_Next_Race')",
-                      "schema": {
-                        "type": "object",
-                        "properties": {
-                          "MRData": {
-                            "type": "object",
-                            "properties": {
-                              "RaceTable": {
-                                "type": "object",
-                                "properties": {
-                                  "Races": {
-                                    "type": "array",
-                                    "items": {
-                                      "type": "object",
-                                      "properties": {
-                                        "FirstPractice": {
-                                          "type": "object",
-                                          "properties": {
-                                            "date": { "type": "string" },
-                                            "time": { "type": "string" }
-                                          }
-                                        },
-                                        "Qualifying": {
-                                          "type": "object",
-                                          "properties": {
-                                            "date": { "type": "string" },
-                                            "time": { "type": "string" }
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "runAfter": {
-                      "Fetch_Next_Race": ["Succeeded"]
-                    }
-                  },
-                  "Compose_FirstPractice_DateTime": {
-                    "type": "Compose",
-                    "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['time']\n)",
-                    "runAfter": {
-                      "Parse_JSON": ["Succeeded"]
-                    }
-                  },
-                  "Compose_Qualifying_DateTime": {
-                    "type": "Compose",
-                    "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['time']\n)",
-                    "runAfter": {
-                      "Compose_FirstPractice_DateTime": ["Succeeded"]
-                    }
-                  },
-                  "If_Within_FP1_to_Qualifying_Window": {
-                    "type": "If",
-                    "expression": {
-                      "and": [
-                        {
-                          "greater": [
-                            "@utcNow()",
-                            "@outputs('Compose_FirstPractice_DateTime')"
-                          ]
-                        },
-                        {
-                          "less": [
-                            "@utcNow()",
-                            "@outputs('Compose_Qualifying_DateTime')"
-                          ]
-                        }
-                      ]
-                    },
-                    "actions": {
-                      "Trigger_Runner": {
-                        "type": "Http",
-                        "inputs": {
-                          "method": "GET",
-                          "uri": "[listCallbackUrl(resourceId('Microsoft.Logic/workflows/triggers', parameters('runnerLogicAppName'), 'manual'), '2016-06-01').value]"
-                        },
-                        "runtimeConfiguration": {
-                          "contentTransfer": {
-                            "transferMode": "Chunked"
-                          }
-                        },
-                        "runAfter": {}
-                      }
-                    },
-                    "else": {
-                      "actions": {}
-                    },
-                    "runAfter": {
-                      "Compose_Qualifying_DateTime": ["Succeeded"]
-                    }
-                  }
+              "runtimeConfiguration": {
+                "contentTransfer": {
+                  "transferMode": "Chunked"
                 }
               },
               "runAfter": {}
@@ -227,6 +236,10 @@
     "logicAppResourceId": {
       "type": "string",
       "value": "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+    },
+    "postRaceLogicAppResourceId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', parameters('postRaceLogicAppName'))]"
     }
   }
 }

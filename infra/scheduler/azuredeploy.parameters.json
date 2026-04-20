@@ -5,6 +5,9 @@
     "logicAppName": {
       "value": "f1-fantasy-scraper-scheduler"
     },
+    "postRaceLogicAppName": {
+      "value": "f1-fantasy-scraper-scheduler-post-race"
+    },
     "location": {
       "value": "westeurope"
     },
