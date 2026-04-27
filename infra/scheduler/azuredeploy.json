@@ -243,8 +243,16 @@
                 }
               },
               "runAfter": {
-                "Notify_Log_Channel_On_Failure": ["Succeeded", "Failed", "TimedOut"],
-                "Notify_Errors_Channel_On_Failure": ["Succeeded", "Failed", "TimedOut"]
+                "Notify_Log_Channel_On_Failure": [
+                  "Succeeded",
+                  "Failed",
+                  "TimedOut"
+                ],
+                "Notify_Errors_Channel_On_Failure": [
+                  "Succeeded",
+                  "Failed",
+                  "TimedOut"
+                ]
               }
             }
           },
@@ -279,7 +287,7 @@
                 "timeZone": "UTC",
                 "schedule": {
                   "weekDays": ["Monday"],
-                  "hours": [2, 10, 18],
+                  "hours": [2],
                   "minutes": [0]
                 }
               }
@@ -351,8 +359,16 @@
                 }
               },
               "runAfter": {
-                "Notify_Log_Channel_On_Failure": ["Succeeded", "Failed", "TimedOut"],
-                "Notify_Errors_Channel_On_Failure": ["Succeeded", "Failed", "TimedOut"]
+                "Notify_Log_Channel_On_Failure": [
+                  "Succeeded",
+                  "Failed",
+                  "TimedOut"
+                ],
+                "Notify_Errors_Channel_On_Failure": [
+                  "Succeeded",
+                  "Failed",
+                  "TimedOut"
+                ]
               }
             }
           },
