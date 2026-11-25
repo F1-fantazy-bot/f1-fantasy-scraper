@@ -2,11 +2,15 @@
 
 ARM templates for the Logic Apps that drive the scraper in production:
 
-| Logic App                            | Trigger                                 | Purpose                                                                                          |
-| ------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `f1-fantasy-scraper-runner`          | HTTP (Request)                          | Starts the `f1-fantasy-scraper-aci` container group via Managed Identity → Azure Management API. |
-| `f1-fantasy-scraper-scheduler`       | Recurrence (Fri/Sat 15 & 45 min, UTC)  | Fetches next race and calls runner if `FP1 < now < Qualifying`.                                  |
-| `f1-fantasy-scraper-scheduler-post-race` | Recurrence (Mon 02/10/18, UTC)      | Calls runner after race weekends.                                                                |
+| Logic App | Trigger | Purpose |
+| --- | --- | --- |
+| `f1-fantasy-scraper-runner` | HTTP request | Starts the scraper ACI using its managed identity. |
+| `f1-fantasy-scraper-scheduler` | Fri/Sat at :15 and :45 UTC | Triggers the runner when `FP1 < now < Qualifying` for any cached round. |
+| `f1-fantasy-scraper-scheduler-post-race` | Monday at 02:00 UTC | Triggers the runner after the weekend. |
+
+The weekend scheduler reads `jolpica/calendar.json` with its managed identity.
+The deployment assigns Storage Blob Data Reader on the existing storage
+container. An invalid or unavailable calendar alerts and skips the runner.
 
 ## Layout
 
