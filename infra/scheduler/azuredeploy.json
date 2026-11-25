@@ -30,21 +30,22 @@
         "description": "Name of the runner Logic App to invoke."
       }
     },
-    "nextRaceApiUrl": {
-      "type": "string",
-      "defaultValue": "https://api.jolpi.ca/ergast/f1/current/next.json",
-      "metadata": {
-        "description": "Ergast-compatible endpoint used to look up the next race schedule."
-      }
-    },
     "telegramBotToken": {
       "type": "securestring",
       "metadata": {
         "description": "Telegram bot token used to post Logic App failure notifications."
       }
+    },
+    "calendarStorageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account in this resource group hosting f1-fantasy-scraper-json."
+      }
     }
   },
-  "variables": {},
+  "variables": {
+    "calendarBlobUri": "[concat('https://', parameters('calendarStorageAccountName'), '.blob.core.windows.net/f1-fantasy-scraper-json/jolpica/calendar.json')]"
+  },
   "resources": [
     {
       "type": "Microsoft.Logic/workflows",
@@ -57,7 +58,9 @@
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "contentVersion": "1.0.0.0",
           "parameters": {
-            "telegramBotToken": { "type": "SecureString" }
+            "telegramBotToken": {
+              "type": "SecureString"
+            }
           },
           "triggers": {
             "Recurrence": {
@@ -81,49 +84,177 @@
             "Try": {
               "type": "Scope",
               "actions": {
-                "Fetch_Next_Race": {
+                "Current_Time": {
+                  "type": "Compose",
+                  "inputs": "@utcNow()",
+                  "runAfter": {}
+                },
+                "Read_Calendar": {
                   "type": "Http",
                   "inputs": {
                     "method": "GET",
-                    "uri": "[parameters('nextRaceApiUrl')]"
-                  },
-                  "runtimeConfiguration": {
-                    "contentTransfer": {
-                      "transferMode": "Chunked"
+                    "uri": "[variables('calendarBlobUri')]",
+                    "headers": {
+                      "x-ms-version": "2023-11-03",
+                      "x-ms-date": "@formatDateTime(utcNow(), 'r')"
+                    },
+                    "authentication": {
+                      "type": "ManagedServiceIdentity",
+                      "audience": "https://storage.azure.com/"
                     }
                   },
                   "runAfter": {}
                 },
-                "Parse_JSON": {
+                "Parse_Calendar": {
                   "type": "ParseJson",
                   "inputs": {
-                    "content": "@body('Fetch_Next_Race')",
+                    "content": "@body('Read_Calendar')",
                     "schema": {
                       "type": "object",
+                      "required": ["fetchedAt", "MRData"],
                       "properties": {
+                        "fetchedAt": {
+                          "type": "string",
+                          "minLength": 1
+                        },
                         "MRData": {
                           "type": "object",
+                          "required": ["limit", "offset", "total", "RaceTable"],
                           "properties": {
+                            "limit": {
+                              "type": "string"
+                            },
+                            "offset": {
+                              "type": "string",
+                              "enum": ["0"]
+                            },
+                            "total": {
+                              "type": "string"
+                            },
                             "RaceTable": {
                               "type": "object",
+                              "required": ["season", "Races"],
                               "properties": {
+                                "season": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
                                 "Races": {
                                   "type": "array",
+                                  "minItems": 1,
+                                  "maxItems": 100,
                                   "items": {
                                     "type": "object",
+                                    "required": [
+                                      "season",
+                                      "round",
+                                      "raceName",
+                                      "date",
+                                      "Circuit"
+                                    ],
                                     "properties": {
-                                      "FirstPractice": {
+                                      "season": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "round": {
+                                        "type": "string"
+                                      },
+                                      "raceName": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "date": {
+                                        "type": "string"
+                                      },
+                                      "Circuit": {
                                         "type": "object",
+                                        "required": ["circuitId"],
                                         "properties": {
-                                          "date": { "type": "string" },
-                                          "time": { "type": "string" }
+                                          "circuitId": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          }
+                                        }
+                                      },
+                                      "time": {
+                                        "type": ["string", "null"]
+                                      },
+                                      "FirstPractice": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
+                                        }
+                                      },
+                                      "SecondPractice": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
+                                        }
+                                      },
+                                      "ThirdPractice": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
                                         }
                                       },
                                       "Qualifying": {
-                                        "type": "object",
+                                        "type": ["object", "null"],
                                         "properties": {
-                                          "date": { "type": "string" },
-                                          "time": { "type": "string" }
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
+                                        }
+                                      },
+                                      "Sprint": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
+                                        }
+                                      },
+                                      "SprintQualifying": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
+                                        }
+                                      },
+                                      "SprintShootout": {
+                                        "type": ["object", "null"],
+                                        "properties": {
+                                          "date": {
+                                            "type": ["string", "null"]
+                                          },
+                                          "time": {
+                                            "type": ["string", "null"]
+                                          }
                                         }
                                       }
                                     }
@@ -137,41 +268,81 @@
                     }
                   },
                   "runAfter": {
-                    "Fetch_Next_Race": ["Succeeded"]
+                    "Read_Calendar": ["Succeeded"]
                   }
                 },
-                "Compose_FirstPractice_DateTime": {
-                  "type": "Compose",
-                  "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['FirstPractice']?['time']\n)",
-                  "runAfter": {
-                    "Parse_JSON": ["Succeeded"]
-                  }
-                },
-                "Compose_Qualifying_DateTime": {
-                  "type": "Compose",
-                  "inputs": "@concat(\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['date'],\n  'T',\n  body('Parse_JSON')?['MRData']?['RaceTable']?['Races'][0]?['Qualifying']?['time']\n)",
-                  "runAfter": {
-                    "Compose_FirstPractice_DateTime": ["Succeeded"]
-                  }
-                },
-                "If_Within_FP1_to_Qualifying_Window": {
-                  "type": "If",
-                  "expression": {
-                    "and": [
-                      {
-                        "greater": [
-                          "@utcNow()",
-                          "@outputs('Compose_FirstPractice_DateTime')"
-                        ]
-                      },
-                      {
-                        "less": [
-                          "@utcNow()",
-                          "@outputs('Compose_Qualifying_DateTime')"
-                        ]
-                      }
-                    ]
+                "Select_Rounds": {
+                  "type": "Select",
+                  "inputs": {
+                    "from": "@body('Parse_Calendar')['MRData']['RaceTable']['Races']",
+                    "select": "@int(item()['round'])"
                   },
+                  "runAfter": {
+                    "Parse_Calendar": ["Succeeded"]
+                  }
+                },
+                "Find_Invalid_Races": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('Parse_Calendar')['MRData']['RaceTable']['Races']",
+                    "where": "@or(not(equals(item()['season'], body('Parse_Calendar')['MRData']['RaceTable']['season'])), not(startsWith(item()['date'], concat(body('Parse_Calendar')['MRData']['RaceTable']['season'], '-'))), if(empty(item()?['date']), false, not(equals(formatDateTime(concat(item()?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['date']))), if(empty(item()?['FirstPractice']?['date']), false, not(equals(formatDateTime(concat(item()?['FirstPractice']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['FirstPractice']?['date']))), if(empty(item()?['SecondPractice']?['date']), false, not(equals(formatDateTime(concat(item()?['SecondPractice']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['SecondPractice']?['date']))), if(empty(item()?['ThirdPractice']?['date']), false, not(equals(formatDateTime(concat(item()?['ThirdPractice']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['ThirdPractice']?['date']))), if(empty(item()?['Qualifying']?['date']), false, not(equals(formatDateTime(concat(item()?['Qualifying']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['Qualifying']?['date']))), if(empty(item()?['Sprint']?['date']), false, not(equals(formatDateTime(concat(item()?['Sprint']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['Sprint']?['date']))), if(empty(item()?['SprintQualifying']?['date']), false, not(equals(formatDateTime(concat(item()?['SprintQualifying']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['SprintQualifying']?['date']))), if(empty(item()?['SprintShootout']?['date']), false, not(equals(formatDateTime(concat(item()?['SprintShootout']?['date'], 'T00:00:00Z'), 'yyyy-MM-dd'), item()?['SprintShootout']?['date']))), if(equals(item()?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['time']), 'HH:mm:ssZ'), item()?['time']))), if(equals(item()?['FirstPractice']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['FirstPractice']?['time']), 'HH:mm:ssZ'), item()?['FirstPractice']?['time']))), if(equals(item()?['SecondPractice']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['SecondPractice']?['time']), 'HH:mm:ssZ'), item()?['SecondPractice']?['time']))), if(equals(item()?['ThirdPractice']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['ThirdPractice']?['time']), 'HH:mm:ssZ'), item()?['ThirdPractice']?['time']))), if(equals(item()?['Qualifying']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['Qualifying']?['time']), 'HH:mm:ssZ'), item()?['Qualifying']?['time']))), if(equals(item()?['Sprint']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['Sprint']?['time']), 'HH:mm:ssZ'), item()?['Sprint']?['time']))), if(equals(item()?['SprintQualifying']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['SprintQualifying']?['time']), 'HH:mm:ssZ'), item()?['SprintQualifying']?['time']))), if(equals(item()?['SprintShootout']?['time'], null), false, not(equals(formatDateTime(concat('2000-01-01T', item()?['SprintShootout']?['time']), 'HH:mm:ssZ'), item()?['SprintShootout']?['time']))), not(equals(item()['round'], string(int(item()['round'])))))"
+                  },
+                  "runAfter": {
+                    "Parse_Calendar": ["Succeeded"]
+                  }
+                },
+                "Validate_Calendar": {
+                  "type": "ParseJson",
+                  "inputs": {
+                    "content": "@and(equals(body('Parse_Calendar')['MRData']['RaceTable']['season'], formatDateTime(outputs('Current_Time'), 'yyyy')), equals(int(body('Parse_Calendar')['MRData']['total']), length(body('Select_Rounds'))), greaterOrEquals(int(body('Parse_Calendar')['MRData']['limit']), length(body('Select_Rounds'))), equals(length(intersection(body('Select_Rounds'), range(1, length(body('Select_Rounds'))))), length(body('Select_Rounds'))), empty(body('Find_Invalid_Races')), greater(ticks(body('Parse_Calendar')['fetchedAt']), 0))",
+                    "schema": {
+                      "type": "boolean",
+                      "enum": [true]
+                    }
+                  },
+                  "runAfter": {
+                    "Select_Rounds": ["Succeeded"],
+                    "Find_Invalid_Races": ["Succeeded"],
+                    "Current_Time": ["Succeeded"]
+                  }
+                },
+                "Find_Active_Rounds": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('Parse_Calendar')['MRData']['RaceTable']['Races']",
+                    "where": "@if(and(and(not(empty(item()?['FirstPractice']?['date'])), not(empty(item()?['FirstPractice']?['time']))), and(not(empty(item()?['Qualifying']?['date'])), not(empty(item()?['Qualifying']?['time'])))), and(greater(ticks(outputs('Current_Time')), ticks(concat(item()?['FirstPractice']?['date'], 'T', item()?['FirstPractice']?['time']))), less(ticks(outputs('Current_Time')), ticks(concat(item()?['Qualifying']?['date'], 'T', item()?['Qualifying']?['time'])))), false)"
+                  },
+                  "runAfter": {
+                    "Validate_Calendar": ["Succeeded"]
+                  }
+                },
+                "Find_Indeterminate_Rounds": {
+                  "type": "Query",
+                  "inputs": {
+                    "from": "@body('Parse_Calendar')['MRData']['RaceTable']['Races']",
+                    "where": "@if(and(and(not(empty(item()?['FirstPractice']?['date'])), not(empty(item()?['FirstPractice']?['time']))), and(not(empty(item()?['Qualifying']?['date'])), not(empty(item()?['Qualifying']?['time'])))), false, and(greater(ticks(outputs('Current_Time')), ticks(if(and(not(empty(item()?['FirstPractice']?['date'])), not(empty(item()?['FirstPractice']?['time']))), concat(item()?['FirstPractice']?['date'], 'T', item()?['FirstPractice']?['time']), if(empty(item()?['FirstPractice']?['date']), addDays(concat(item()?['date'], 'T00:00:00Z'), -4), concat(item()?['FirstPractice']?['date'], 'T00:00:00Z'))))), less(ticks(outputs('Current_Time')), ticks(if(and(not(empty(item()?['Qualifying']?['date'])), not(empty(item()?['Qualifying']?['time']))), concat(item()?['Qualifying']?['date'], 'T', item()?['Qualifying']?['time']), if(empty(item()?['Qualifying']?['date']), addDays(concat(item()?['date'], 'T00:00:00Z'), 1), addDays(concat(item()?['Qualifying']?['date'], 'T00:00:00Z'), 1)))))))"
+                  },
+                  "runAfter": {
+                    "Validate_Calendar": ["Succeeded"]
+                  }
+                },
+                "Validate_Window_Decision": {
+                  "type": "ParseJson",
+                  "inputs": {
+                    "content": "@or(not(empty(body('Find_Active_Rounds'))), empty(body('Find_Indeterminate_Rounds')))",
+                    "schema": {
+                      "type": "boolean",
+                      "enum": [true]
+                    }
+                  },
+                  "runAfter": {
+                    "Find_Active_Rounds": ["Succeeded"],
+                    "Find_Indeterminate_Rounds": ["Succeeded"]
+                  }
+                },
+                "Apply_Window_Decision": {
+                  "type": "If",
+                  "expression": "@not(empty(body('Find_Active_Rounds')))",
                   "actions": {
                     "Trigger_Runner": {
                       "type": "Http",
@@ -191,7 +362,7 @@
                     "actions": {}
                   },
                   "runAfter": {
-                    "Compose_Qualifying_DateTime": ["Succeeded"]
+                    "Validate_Window_Decision": ["Succeeded"]
                   }
                 }
               },
@@ -202,14 +373,18 @@
               "inputs": {
                 "method": "POST",
                 "uri": "@{concat('https://api.telegram.org/bot', parameters('telegramBotToken'), '/sendMessage')}",
-                "headers": { "Content-Type": "application/json" },
+                "headers": {
+                  "Content-Type": "application/json"
+                },
                 "body": {
                   "chat_id": -1002298860617,
                   "text": "@{concat('🚨 Logic App ', workflow().name, ' failed\n\nRun: ', workflow().run.name, '\nTime (UTC): ', utcNow(), '\n\nFailed actions:\n', take(string(result('Try')), 3500))}"
                 }
               },
               "runtimeConfiguration": {
-                "secureData": { "properties": ["inputs", "outputs"] }
+                "secureData": {
+                  "properties": ["inputs", "outputs"]
+                }
               },
               "runAfter": {
                 "Try": ["Failed", "TimedOut"]
@@ -220,14 +395,18 @@
               "inputs": {
                 "method": "POST",
                 "uri": "@{concat('https://api.telegram.org/bot', parameters('telegramBotToken'), '/sendMessage')}",
-                "headers": { "Content-Type": "application/json" },
+                "headers": {
+                  "Content-Type": "application/json"
+                },
                 "body": {
                   "chat_id": -5167373779,
                   "text": "@{concat('🚨 Logic App ', workflow().name, ' failed\n\nRun: ', workflow().run.name, '\nTime (UTC): ', utcNow(), '\n\nFailed actions:\n', take(string(result('Try')), 3500))}"
                 }
               },
               "runtimeConfiguration": {
-                "secureData": { "properties": ["inputs", "outputs"] }
+                "secureData": {
+                  "properties": ["inputs", "outputs"]
+                }
               },
               "runAfter": {
                 "Try": ["Failed", "TimedOut"]
@@ -263,6 +442,9 @@
             "value": "[parameters('telegramBotToken')]"
           }
         }
+      },
+      "identity": {
+        "type": "SystemAssigned"
       }
     },
     {
@@ -276,7 +458,9 @@
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "contentVersion": "1.0.0.0",
           "parameters": {
-            "telegramBotToken": { "type": "SecureString" }
+            "telegramBotToken": {
+              "type": "SecureString"
+            }
           },
           "triggers": {
             "Recurrence": {
@@ -318,14 +502,18 @@
               "inputs": {
                 "method": "POST",
                 "uri": "@{concat('https://api.telegram.org/bot', parameters('telegramBotToken'), '/sendMessage')}",
-                "headers": { "Content-Type": "application/json" },
+                "headers": {
+                  "Content-Type": "application/json"
+                },
                 "body": {
                   "chat_id": -1002298860617,
                   "text": "@{concat('🚨 Logic App ', workflow().name, ' failed\n\nRun: ', workflow().run.name, '\nTime (UTC): ', utcNow(), '\n\nFailed actions:\n', take(string(result('Try')), 3500))}"
                 }
               },
               "runtimeConfiguration": {
-                "secureData": { "properties": ["inputs", "outputs"] }
+                "secureData": {
+                  "properties": ["inputs", "outputs"]
+                }
               },
               "runAfter": {
                 "Try": ["Failed", "TimedOut"]
@@ -336,14 +524,18 @@
               "inputs": {
                 "method": "POST",
                 "uri": "@{concat('https://api.telegram.org/bot', parameters('telegramBotToken'), '/sendMessage')}",
-                "headers": { "Content-Type": "application/json" },
+                "headers": {
+                  "Content-Type": "application/json"
+                },
                 "body": {
                   "chat_id": -5167373779,
                   "text": "@{concat('🚨 Logic App ', workflow().name, ' failed\n\nRun: ', workflow().run.name, '\nTime (UTC): ', utcNow(), '\n\nFailed actions:\n', take(string(result('Try')), 3500))}"
                 }
               },
               "runtimeConfiguration": {
-                "secureData": { "properties": ["inputs", "outputs"] }
+                "secureData": {
+                  "properties": ["inputs", "outputs"]
+                }
               },
               "runAfter": {
                 "Try": ["Failed", "TimedOut"]
@@ -379,6 +571,20 @@
             "value": "[parameters('telegramBotToken')]"
           }
         }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "name": "[guid(concat('Microsoft.Storage/storageAccounts/', parameters('calendarStorageAccountName'), '/blobServices/default/containers/f1-fantasy-scraper-json'), resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]",
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', parameters('calendarStorageAccountName'), '/blobServices/default/containers/f1-fantasy-scraper-json')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Logic/workflows', parameters('logicAppName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]",
+        "principalId": "[reference(resourceId('Microsoft.Logic/workflows', parameters('logicAppName')), '2019-05-01', 'Full').identity.principalId]",
+        "principalType": "ServicePrincipal"
       }
     }
   ],
