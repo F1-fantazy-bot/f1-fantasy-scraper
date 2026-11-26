@@ -9,7 +9,10 @@ ARM templates for the Logic Apps that drive the scraper in production:
 | `f1-fantasy-scraper-scheduler-post-race` | Monday at 02:00 UTC | Triggers the runner after the weekend. |
 
 The weekend scheduler reads `jolpica/calendar.json` with its managed identity.
-The deployment assigns Storage Blob Data Reader on the existing storage
+Routine deployments reuse the scheduler’s existing container-scoped Storage
+Blob Data Reader grant. For a new scheduler identity, run the scheduler-only
+Azure CLI deployment below once with `grantCalendarReader=true` appended to the
+`--parameters` line, using an Azure identity that can assign roles on the blob
 container. An invalid or unavailable calendar alerts and skips the runner.
 
 ## Layout
